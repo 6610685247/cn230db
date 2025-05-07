@@ -3,11 +3,9 @@ import sqlite3
 import time
 import string
 
-# สร้างฐานข้อมูล
 conn = sqlite3.connect("all_books.db")
 cursor = conn.cursor()
 
-# สร้างตาราง
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS books (
     key TEXT PRIMARY KEY,
@@ -42,21 +40,19 @@ def save_books(docs):
             print("Error inserting:", e)
     conn.commit()
 
-# ใช้ a-z, 0-9 เป็นคำค้นเริ่มต้น
 queries = list(string.ascii_lowercase) + list("0123456789")
 
 for q in queries:
     print(f"Fetching books for query: '{q}'")
-    for page in range(1, 6):  # ดึงหน้า 1 ถึง 5 ต่อ query (เปลี่ยนจำนวนได้)
+    for page in range(1, 6):
         print(f"  Page {page}")
         data = fetch_books(q, page)
         if data and "docs" in data:
             save_books(data["docs"])
         else:
             break
-        time.sleep(1)  # ชะลอการเรียก API เพื่อไม่ให้โดนบล็อก
+        time.sleep(1)
 
-# ดึงข้อมูล: จำนวนหนังสือต่อปี
 cursor.execute("""
 SELECT first_publish_year, COUNT(*) as total_books
 FROM books
@@ -68,7 +64,6 @@ ORDER BY first_publish_year
 results = cursor.fetchall()
 conn.close()
 
-# แสดงผลลัพธ์ใน terminal
 print(f"{'ปี':<8} {'จำนวนหนังสือ':>15}")
 print("-" * 25)
 for year, count in results:
