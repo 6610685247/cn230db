@@ -1,32 +1,78 @@
+import requests
 import sqlite3
+import time
+import string
 
-con = sqlite3.connect("tutorial.db")
+# สร้างฐานข้อมูล
+conn = sqlite3.connect("all_books.db")
+cursor = conn.cursor()
 
-cur = con.cursor()
+# สร้างตาราง
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS books (
+    key TEXT PRIMARY KEY,
+    title TEXT,
+    author TEXT,
+    first_publish_year INTEGER
+)
+""")
+conn.commit()
 
-cur.execute("DROP TABLE IF EXISTS movie")
-cur.execute("CREATE TABLE movie(title, year, score)")
+def fetch_books(query, page=1, limit=100):
+    url = f"https://openlibrary.org/search.json?q={query}&page={page}&limit={limit}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed for query={query} page={page}")
+        return None
 
-cur.execute("""
-    INSERT INTO movie VALUES
-        ('Monty Python and the Holy Grail', 1975, 8.2),
-        ('And Now for Something Completely Different', 1971, 7.5)
+def save_books(docs):
+    for book in docs:
+        key = book.get("key")
+        title = book.get("title", "")
+        author = ", ".join(book.get("author_name", [])) if "author_name" in book else "Unknown"
+        year = book.get("first_publish_year", None)
+        try:
+            cursor.execute("""
+                INSERT OR IGNORE INTO books (key, title, author, first_publish_year)
+                VALUES (?, ?, ?, ?)
+            """, (key, title, author, year))
+        except Exception as e:
+            print("Error inserting:", e)
+    conn.commit()
+
+# ใช้ a-z, 0-9 เป็นคำค้นเริ่มต้น
+queries = list(string.ascii_lowercase) + list("0123456789")
+
+for q in queries:
+    print(f"Fetching books for query: '{q}'")
+    for page in range(1, 6):  # ดึงหน้า 1 ถึง 5 ต่อ query (เปลี่ยนจำนวนได้)
+        print(f"  Page {page}")
+        data = fetch_books(q, page)
+        if data and "docs" in data:
+            save_books(data["docs"])
+        else:
+            break
+        time.sleep(1)  # ชะลอการเรียก API เพื่อไม่ให้โดนบล็อก
+
+# ดึงข้อมูล: จำนวนหนังสือต่อปี
+cursor.execute("""
+SELECT first_publish_year, COUNT(*) as total_books
+FROM books
+WHERE first_publish_year IS NOT NULL
+GROUP BY first_publish_year
+ORDER BY first_publish_year
 """)
 
-con.commit()
+results = cursor.fetchall()
+conn.close()
 
-data = [
-    ("Monty Python Live at the Hollywood Bowl", 1982, 7.9),
-    ("Monty Python's The Meaning of Life", 1983, 7.5),
-    ("Monty Python's Life of Brian", 1979, 8.0),
-]
-cur.executemany("INSERT INTO movie VALUES(?, ?, ?)", data)
-con.commit()
+# แสดงผลลัพธ์ใน terminal
+print(f"{'ปี':<8} {'จำนวนหนังสือ':>15}")
+print("-" * 25)
+for year, count in results:
+    print(f"{year:<8} {count:>15}")
 
-for row in cur.execute("SELECT year, title FROM movie ORDER BY year"):
-    print(row)
 
-res = cur.execute("SELECT AVG(score) FROM movie")
-print("Average score:", res.fetchone()[0])
-
-con.close()
+conn.close()
