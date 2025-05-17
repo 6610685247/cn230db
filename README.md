@@ -1,14 +1,9 @@
 # CN230 Project Template
 
-    python db.py
+1.ดึงข้อมูลมากจาก https://openlibrary.org/
+2.เก็บข้อมูลหนังสือทั้งหมดลงใน database
+3.นำข้อมูลมาวิเคราะห์
 
-
-1. fork this repository
-2. run codespaces
-3. when done execute the following git command
-
-```
-    git add .
-    git commit -m "finished"
-    git push origin main
-```
+เนื้อหาที่ได้ทำการวิเคราะห์
+1.ปีที่หนังสือตีพิมพ์
+2.Top 20 นักเขียนที่เขียนหนังสือออกมาเยอะที่สุด
